@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Well — sin.ai.da</title>
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Cinzel:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--void:#000507;--gc:#7dd4f8;--gm:#3a8fba;--gs:#1a4d6e;--tb:#c8e8f5;--td:#4a7a96;--tm:#8ab8d0}
+html{scroll-behavior:smooth}
+body{background:var(--void);color:var(--tb);font-family:'Cormorant Garamond',serif;overflow-x:hidden;cursor:crosshair;min-height:100vh}
+
+/* Three.js scene behind everything */
+#canvas-bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* Water distortion + caustics layer */
+#water-canvas{position:fixed;inset:0;z-index:1;pointer-events:none;mix-blend-mode:screen;opacity:.55}
+
+/* Glow scatter canvas — above water, below content */
+#glow-canvas{position:fixed;inset:0;z-index:2;pointer-events:none;mix-blend-mode:screen;opacity:.7}
+
+.layer{position:relative;z-index:10}
+.bloom{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(125,212,248,.22) 0%,transparent 60%);z-index:199;pointer-events:none;opacity:0;transition:opacity .2s}
+.bloom.on{opacity:1}
+
+/* ── HEADER ── */
+header{position:fixed;top:0;left:0;right:0;z-index:100;padding:1.2rem 2.5rem;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(to bottom,rgba(0,5,7,.9),transparent);backdrop-filter:blur(4px)}
+.hbrand,.hnav a{font-family:'Cinzel',serif;font-weight:300;letter-spacing:.38em;color:var(--td);text-decoration:none;text-transform:uppercase;transition:color .4s;font-size:.68rem}
+.hbrand:hover,.hnav a:hover{color:var(--gc)}
+.htitle{font-family:'UnifrakturMaguntia',cursive;font-size:1.6rem;color:var(--gc);text-shadow:0 0 28px rgba(125,212,248,.55),0 0 60px rgba(125,212,248,.2)}
+
+/* ── HERO ── */
+#hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6rem 2rem 4rem}
+.eyebrow{font-family:'Cinzel',serif;font-size:.63rem;letter-spacing:.5em;color:var(--td);text-transform:uppercase;margin-bottom:2rem;opacity:0;animation:fadeUp 1.4s ease .4s forwards}
+.glow-title{font-family:'UnifrakturMaguntia',cursive;font-size:clamp(4rem,12vw,9.5rem);line-height:.88;color:var(--gc);margin-bottom:2rem;opacity:0;animation:fadeUp 1.4s ease .7s forwards;transition:text-shadow .1s ease;text-shadow:0 0 18px rgba(125,212,248,.6),0 0 55px rgba(125,212,248,.3),0 0 110px rgba(125,212,248,.15)}
+.hero-sub{font-family:'Cormorant Garamond',serif;font-size:clamp(1rem,2.5vw,1.3rem);font-style:italic;font-weight:300;color:var(--tm);max-width:520px;line-height:1.85;margin-bottom:4rem;opacity:0;animation:fadeUp 1.4s ease 1s forwards}
+.scroll-hint{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.42em;color:var(--td);text-transform:uppercase;opacity:0;animation:fadeUp 1.4s ease 2s forwards,softPulse 4s ease 3s infinite;display:flex;flex-direction:column;align-items:center;gap:.8rem}
+.scroll-hint::after{content:'';width:1px;height:52px;background:linear-gradient(to bottom,var(--gs),transparent);display:block}
+
+/* ── QUOTE ── */
+#quote-teaser{padding:5rem 2rem;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}
+#quote-teaser::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:1px;height:60px;background:linear-gradient(to bottom,transparent,var(--gs))}
+.qt-mark{font-family:'UnifrakturMaguntia',cursive;font-size:5rem;color:rgba(125,212,248,.07);line-height:1;margin-bottom:-1rem}
+.qt-text{font-family:'Cormorant Garamond',serif;font-size:clamp(1.35rem,3.5vw,2.15rem);font-style:italic;font-weight:300;color:var(--tm);max-width:680px;line-height:1.65}
+.qt-attr{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.4em;color:var(--td);text-transform:uppercase;margin-top:1.8rem}
+
+/* ── TOPICS ── */
+#topics{padding:4rem 2rem 5rem;display:flex;flex-direction:column;align-items:center}
+.section-heading{font-family:'UnifrakturMaguntia',cursive;font-size:clamp(1.9rem,4.5vw,3.2rem);color:var(--gc);text-align:center;margin-bottom:.8rem;transition:text-shadow .12s ease;text-shadow:0 0 12px rgba(125,212,248,.35),0 0 35px rgba(125,212,248,.15)}
+.section-sub{font-family:'Cormorant Garamond',serif;font-size:1rem;font-style:italic;color:var(--td);text-align:center;margin-bottom:2rem}
+
+/* All waters button */
+.all-waters-btn{font-family:'UnifrakturMaguntia',cursive;font-size:1.1rem;color:var(--gc);background:none;border:1px solid rgba(125,212,248,.2);padding:.6rem 2rem;cursor:pointer;letter-spacing:.04em;transition:all .4s;margin-bottom:2rem;text-shadow:0 0 15px rgba(125,212,248,.3)}
+.all-waters-btn:hover,.all-waters-btn.active{background:rgba(125,212,248,.06);border-color:rgba(125,212,248,.45);box-shadow:0 0 28px rgba(125,212,248,.12),0 0 60px rgba(125,212,248,.05);text-shadow:0 0 25px rgba(125,212,248,.6)}
+
+/* CONSTELLATION */
+#constellation-wrap{position:relative;width:100%;max-width:900px;margin:0 auto}
+#constellation-canvas{display:block;width:100%;touch-action:none}
+
+/* ── PORTAL ── */
+#draw-section{padding:3rem 2rem 8rem;display:flex;flex-direction:column;align-items:center;gap:1.8rem}
+.portal-label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.4em;color:var(--td);text-transform:uppercase;text-align:center;transition:color .4s;min-height:1rem}
+.rune-row{display:flex;flex-direction:column;align-items:center;gap:.6rem}
+.rune-track{display:flex;gap:5px;flex-wrap:wrap;max-width:320px;justify-content:center}
+.rune-pip{width:9px;height:9px;border:1px solid rgba(125,212,248,.18);transform:rotate(45deg);transition:all .5s}
+.rune-pip.drawn{background:rgba(125,212,248,.45);border-color:var(--gc);box-shadow:0 0 7px rgba(125,212,248,.4)}
+.rune-text{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.3em;color:var(--td)}
+.portal-wrap{position:relative;width:300px;height:300px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#portal-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.portal-center{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:.5rem;pointer-events:none;user-select:none}
+.portal-glyph{font-family:'UnifrakturMaguntia',cursive;font-size:2.8rem;color:var(--gc);text-shadow:0 0 25px rgba(125,212,248,.7),0 0 60px rgba(125,212,248,.3);animation:glyphPulse 5s ease infinite}
+.portal-sub{font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.4em;color:var(--td);text-transform:uppercase}
+
+/* ── CARD OVERLAY ── */
+#card-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .45s ease}
+#card-overlay.visible{opacity:1;pointer-events:all}
+.card-backdrop{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(2,5,12,.97),rgba(0,2,4,.99));backdrop-filter:blur(18px)}
+.card-frame{position:relative;z-index:10;max-width:660px;width:92%;padding:4rem 3.5rem;background:rgba(4,12,24,.78);border:1px solid rgba(125,212,248,.12);box-shadow:0 0 80px rgba(125,212,248,.07),inset 0 0 60px rgba(125,212,248,.025);transform:translateY(18px) scale(.97);transition:transform .6s cubic-bezier(.16,1,.3,1);text-align:center}
+#card-overlay.visible .card-frame{transform:translateY(0) scale(1)}
+.cc{position:absolute;width:22px;height:22px;border-color:rgba(125,212,248,.25);border-style:solid}
+.cc.tl{top:14px;left:14px;border-width:1px 0 0 1px}.cc.tr{top:14px;right:14px;border-width:1px 1px 0 0}
+.cc.bl{bottom:14px;left:14px;border-width:0 0 1px 1px}.cc.br{bottom:14px;right:14px;border-width:0 1px 1px 0}
+.card-cat{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.45em;color:var(--td);text-transform:uppercase;margin-bottom:2.2rem}
+.card-div{width:55px;height:1px;background:linear-gradient(to right,transparent,var(--gm),transparent);margin:0 auto 2.2rem}
+.card-q{font-family:'Cormorant Garamond',serif;font-size:clamp(1.3rem,3vw,1.95rem);font-style:italic;font-weight:300;color:var(--tb);line-height:1.65;letter-spacing:.02em}
+.card-num{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.35em;color:rgba(74,122,150,.45);margin-top:1.8rem}
+.card-actions{display:flex;gap:2rem;justify-content:center;margin-top:2.2rem;align-items:center}
+.cbtn{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.35em;color:var(--td);text-transform:uppercase;background:none;border:none;cursor:pointer;transition:color .3s;padding:.5rem 0;border-bottom:1px solid transparent}
+.cbtn:hover{color:var(--gc);border-bottom-color:rgba(125,212,248,.3)}
+.cbtn-draw{font-family:'UnifrakturMaguntia',cursive;font-size:1.05rem;color:var(--gc);text-shadow:0 0 18px rgba(125,212,248,.4);background:none;border:1px solid rgba(125,212,248,.22);cursor:pointer;padding:.65rem 1.8rem;transition:all .4s}
+.cbtn-draw:hover{background:rgba(125,212,248,.06);border-color:rgba(125,212,248,.45);box-shadow:0 0 28px rgba(125,212,248,.12)}
+
+/* ── FOOTER ── */
+footer{position:relative;z-index:10;text-align:center;padding:3rem 2rem;border-top:1px solid rgba(125,212,248,.05)}
+.ftitle{font-family:'UnifrakturMaguntia',cursive;font-size:1.3rem;color:var(--gs);margin-bottom:.9rem}
+.flinks{display:flex;gap:2rem;justify-content:center;margin-bottom:1.3rem;flex-wrap:wrap}
+.flinks a{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.35em;color:var(--td);text-decoration:none;text-transform:uppercase;transition:color .3s}
+.flinks a:hover{color:var(--gc)}
+.fcopy{font-family:'Cormorant Garamond',serif;font-size:.78rem;font-style:italic;color:rgba(74,122,150,.4)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes softPulse{0%,100%{opacity:.35}50%{opacity:.9}}
+@keyframes glyphPulse{0%,100%{opacity:.55;text-shadow:0 0 20px rgba(125,212,248,.45)}50%{opacity:1;text-shadow:0 0 40px rgba(125,212,248,1),0 0 90px rgba(125,212,248,.5)}}
+
+@media(max-width:600px){
+  header{padding:1rem 1.2rem}.htitle{font-size:1.2rem}
+  .card-frame{padding:2.5rem 1.5rem}
+  .topics-grid{grid-template-columns:1fr 1fr}
+  .portal-wrap{width:240px;height:240px}.portal-glyph{font-size:2.1rem}
+}
+::-webkit-scrollbar{width:2px}
+::-webkit-scrollbar-track{background:var(--void)}
+::-webkit-scrollbar-thumb{background:var(--gs);border-radius:2px}
+</style>
+</head>
+<body>
+
+<canvas id="canvas-bg"></canvas>
+<canvas id="water-canvas"></canvas>
+<canvas id="glow-canvas"></canvas>
+<div class="bloom" id="bloom"></div>
+
+<header class="layer">
+  <a href="https://sinaida.eu" target="_blank" class="hbrand">sinaida.eu</a>
+  <div class="htitle">The Well</div>
+  <nav class="hnav"><a href="https://instagram.com/sin.ai.da" target="_blank">@sin.ai.da</a></nav>
+</header>
+
+<section id="hero" class="layer">
+  <p class="eyebrow">A meditation in questions</p>
+  <h1 class="glow-title">The Well</h1>
+  <p class="hero-sub">Descend into what you have not yet asked yourself.<br>No right answers. No wrong ones. Only depth.</p>
+  <div class="scroll-hint">Descend</div>
+</section>
+
+<section id="quote-teaser" class="layer">
+  <div class="qt-mark">"</div>
+  <p class="qt-text">The question that has no answer is a boundary we carry inside us — the border of our being.</p>
+  <p class="qt-attr">— Milan Kundera</p>
+</section>
+
+<section id="topics" class="layer">
+  <h2 class="section-heading">Choose your depth</h2>
+  <p class="section-sub">Select a theme, or draw from all waters at once</p>
+  <button class="all-waters-btn active" id="all-waters-btn">ᚷ Draw from the Abyss</button>
+  <div id="constellation-wrap">
+    <canvas id="constellation-canvas"></canvas>
+  </div>
+</section>
+
+<section id="draw-section" class="layer">
+  <div class="portal-label" id="portal-label">All waters &nbsp;·&nbsp; 100 questions</div>
+  <div class="rune-row">
+    <div class="rune-text" id="rune-text">ᚷ 0 drawn</div>
+    <div class="rune-track" id="rune-track"></div>
+  </div>
+  <div class="portal-wrap" id="portal-wrap" role="button" aria-label="Draw a card">
+    <canvas id="portal-canvas"></canvas>
+    <div class="portal-center">
+      <div class="portal-glyph" id="portal-glyph">ᚷ</div>
+      <div class="portal-sub">tap to draw</div>
+    </div>
+  </div>
+</section>
+
+<div id="card-overlay">
+  <div class="card-backdrop" id="card-backdrop"></div>
+  <div class="card-frame">
+    <div class="cc tl"></div><div class="cc tr"></div>
+    <div class="cc bl"></div><div class="cc br"></div>
+    <div class="card-cat" id="card-cat">—</div>
+    <div class="card-div"></div>
+    <p class="card-q" id="card-q"></p>
+    <div class="card-num" id="card-num"></div>
+    <div class="card-actions">
+      <button class="cbtn" id="close-btn">Return to surface</button>
+      <button class="cbtn-draw" id="next-btn">Draw again</button>
+    </div>
+  </div>
+</div>
+
+<footer class="layer">
+  <div class="ftitle">The Well</div>
+  <div class="flinks">
+    <a href="https://sinaida.eu" target="_blank">sinaida.eu</a>
+    <a href="https://instagram.com/sin.ai.da" target="_blank">@sin.ai.da</a>
+  </div>
+  <p class="fcopy">a meditation by Sinaida Krivchenko &nbsp;·&nbsp; sin.ai.da</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════
+const TOPICS=[
+  {name:"Personal Interests",questions:[
+    "If you could travel anywhere with someone who matters to you, where — and why that place?",
+    "What small, everyday moment always makes you feel alive?",
+    "What skill have you always wanted to learn, and what has actually stopped you?",
+    "What song feels like it was written about your life — and which line hits hardest?",
+    "What one unique thing would your dream home have that no one else has thought to ask for?",
+    "What quirky habit or trait do you have that almost no one knows about?",
+    "When did you last sing to yourself? When did you last sing to someone else?",
+    "If you could create a holiday to celebrate something important to you, what would it be?",
+    "What book or film changed the way you see the world — and why did it hit so hard?",
+    "If you could spend one day doing anything with no limitations, what does that day look like?",
+  ]},
+  {name:"Aspirations",questions:[
+    "Who would you want as a dinner guest if you could choose anyone, alive or dead?",
+    "Would you like to be famous? In what way — and at what cost?",
+    "If you could wake up tomorrow with one new quality or ability, what would it be?",
+    "What dream have you never shared with anyone — and why is it still unspoken?",
+    "Is there something you've wanted to do for years you still haven't started? What's the real reason?",
+    "If you could build a legacy the world would remember, what would it be?",
+    "What adventure do you hope to share with someone you love?",
+    "If you could achieve one impossible goal, what would it be — and how would it change who you are?",
+    "What does a perfect day actually look like, in specific detail?",
+    "If you could know one thing about your future — only one — what would you want to know?",
+  ]},
+  {name:"Self-Reflection",questions:[
+    "If you could send a message to your younger self, what would you say?",
+    "What life lesson did you learn the hard way — and how has it shaped who you are?",
+    "If you could erase one regret from your past, would you? What would it be?",
+    "What do you admire in others that you wish you had more of in yourself?",
+    "How do you move through self-doubt — and what or who actually helps?",
+    "What's something about yourself you're still learning to love?",
+    "If a crystal ball could tell you one truth about yourself, what would you most want to know?",
+    "What's one way you've grown in the past year that you're genuinely proud of?",
+    "What belief did you once hold strongly that you no longer hold — and what changed it?",
+    "What does peace feel like for you — and when did you last feel it?",
+  ]},
+  {name:"Memory",questions:[
+    "If you could relive one day without changing anything, which day would you choose?",
+    "What's something kind someone did for you that you've never forgotten?",
+    "When was the last time you felt truly proud of yourself?",
+    "What memory always brings a smile, no matter how much time has passed?",
+    "Share a time you took a significant risk. How did it turn out — would you do it again?",
+    "What is your most treasured memory?",
+    "What memory do you rarely speak of, but that shaped everything?",
+    "When did you feel like you were exactly where you were meant to be?",
+    "What moment made you laugh so hard you couldn't stop — who were you with?",
+    "When did someone inspire you so deeply that something shifted in you permanently?",
+  ]},
+  {name:"Values",questions:[
+    "What does trust mean to you — and how do you know when it's actually there?",
+    "What do you value most in a friendship?",
+    "What roles do love and affection genuinely play in your life — not what you think they should?",
+    "How close is your family? Do you feel your childhood was happier than most?",
+    "What quality in another person do you find absolutely essential — and why?",
+    "Complete this: 'I feel most loved when someone...'",
+    "What one thing do you believe makes a deep connection last?",
+    "How do you show someone you care in small, everyday ways?",
+    "What does forgiveness mean to you — and how has it appeared in your life?",
+    "What would you never compromise on, no matter what?",
+  ]},
+  {name:"Vulnerability",questions:[
+    "What moment made you feel completely understood by another person?",
+    "Share a time when you felt truly vulnerable. How did the other person respond?",
+    "If you could write a letter to someone who hurt you, what would you say?",
+    "Share a fear you've overcome — how has it changed how you live?",
+    "When did you last cry in front of another person? When did you last cry alone?",
+    "If you were to die this evening with no way to reach anyone — what would you regret not saying?",
+    "What moment made you feel truly seen for who you are?",
+    "Share a time you felt heartbroken. What helped you heal?",
+    "What fear do you still carry — and how would you want someone to support you through it?",
+    "What have you never told anyone because it felt too personal — but can sit with now?",
+  ]},
+  {name:"Big Questions",questions:[
+    "If you could live to 90 retaining either the mind or the body of a 30-year-old — which do you choose?",
+    "If you knew you had one year left, would you change anything about how you're living now?",
+    "What, if anything, is too serious to joke about?",
+    "Your house catches fire. After everyone is safe, you can save one object. What is it — and why?",
+    "Whose absence would devastate you most? Have you told them what they mean to you?",
+    "If you could have dinner with any historical figure, who — and what would you ask?",
+    "What question do you hope to answer before your life ends?",
+    "If you could leave one piece of wisdom for everyone who comes after you, what would it be?",
+    "Do you believe you are living the life you were meant to live?",
+    "What do you most want to understand before you die?",
+  ]},
+  {name:"Gratitude",questions:[
+    "For what in your life do you feel most grateful — right now, today?",
+    "What is the greatest accomplishment of your life so far?",
+    "What moment of deep fulfilment do you rarely talk about?",
+    "Who has shaped you the most — and have you ever told them?",
+    "What's something ordinary you would miss terribly if it were gone?",
+    "What are three things in your life right now that you once prayed for?",
+    "What does abundance mean to you — and where do you already have it?",
+    "Who deserves more gratitude from you than you've expressed?",
+    "What gift — not a material one — changed your life?",
+    "What has grief taught you to be grateful for?",
+  ]},
+  {name:"Habits & Quirks",questions:[
+    "Before a difficult phone call, do you rehearse what you'll say? Why?",
+    "What small habit makes you feel like yourself — and how did it start?",
+    "What do you do when no one is watching that brings you quiet joy?",
+    "What ritual do you have that you've never explained to anyone?",
+    "What's the first thing you do in the morning that sets the tone for everything after?",
+    "What do you collect — objects, memories, ideas — and why?",
+    "What's the most irrational thing you believe — and you believe it anyway?",
+    "What's something that's now automatic for you, but once took enormous effort to build?",
+  ]},
+  {name:"Connection",questions:[
+    "Share a moment when you felt deeply connected to another person. What made it possible?",
+    "What does it take for you to feel truly close to someone?",
+    "What matters deeply to you that most people don't know about?",
+    "What would you want someone who loves you to understand about how you experience the world?",
+    "How do you want to be remembered by people who knew you?",
+    "What's one thing that, if someone did it, would make you feel completely held?",
+    "What does loneliness feel like for you — and what helps?",
+    "What would a perfect evening in someone's company actually look like?",
+  ]},
+  {name:"Time & Legacy",questions:[
+    "If you could relive one era of your life, which — and what would you pay attention to this time?",
+    "What are you building that you hope outlasts you?",
+    "What would your life look like if you were living it entirely for yourself?",
+    "What version of your future self are you most afraid of becoming?",
+    "What would you do differently if you knew no one was watching and no one would judge?",
+    "If you could write the last line of your life story, what would it say?",
+    "What chapter of your life are you currently in — and do you want to be?",
+    "What do you want to be true of your life in ten years that isn't yet?",
+  ]},
+  {name:"The Dark",questions:[
+    "What shadow in yourself have you stopped pretending isn't there?",
+    "What are you most afraid people would see if they really looked at you?",
+    "What's the hardest thing you've ever had to accept about yourself?",
+    "What's the worst version of yourself — and when does it appear?",
+    "What would you do if you knew you could not fail — and why aren't you doing it?",
+    "What are you pretending is fine?",
+    "What feeling do you push away most reliably — and what would happen if you stopped?",
+    "What's the most honest thing you could say about who you are right now?",
+  ]},
+];
+const ALL_Q=TOPICS.flatMap(t=>t.questions.map(q=>({q,topic:t.name})));
+
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let selTopic=null, pool=ALL_Q, drawn=[], totalDrawn=0;
+
+// ══════════════════════════════════════════════════
+// SCROLL TRACKING
+// ══════════════════════════════════════════════════
+let scrollY=0, scrollVelocity=0, lastScrollY=0, scrollGlow=0;
+window.addEventListener('scroll',()=>{
+  scrollY=window.scrollY;
+  scrollVelocity=Math.abs(scrollY-lastScrollY);
+  // Boost glow proportional to scroll speed, decay handled in RAF
+  scrollGlow=Math.min(1, scrollGlow + scrollVelocity*0.04);
+  lastScrollY=scrollY;
+});
+
+// ══════════════════════════════════════════════════
+// MOUSE GLOW ON HEADINGS
+// ══════════════════════════════════════════════════
+let mx=0.5, my=0.5;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX/window.innerWidth; my=e.clientY/window.innerHeight;
+  document.querySelectorAll('.glow-title,.section-heading').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    if(r.bottom<-200||r.top>window.innerHeight+200) return;
+    const cx=(r.left+r.right)/2/window.innerWidth;
+    const cy=(r.top+r.bottom)/2/window.innerHeight;
+    const dist=Math.sqrt((mx-cx)**2+(my-cy)**2);
+    const i=Math.max(0.18, 1.55-dist*2.6);
+    if(el.classList.contains('glow-title')){
+      el.style.textShadow=`0 0 ${~~(18*i)}px rgba(125,212,248,${(.65*i).toFixed(2)}),0 0 ${~~(55*i)}px rgba(125,212,248,${(.3*i).toFixed(2)}),0 0 ${~~(110*i)}px rgba(125,212,248,${(.14*i).toFixed(2)})`;
+    } else {
+      el.style.textShadow=`0 0 ${~~(14*i)}px rgba(125,212,248,${(.55*i).toFixed(2)}),0 0 ${~~(42*i)}px rgba(125,212,248,${(.22*i).toFixed(2)})`;
+    }
+  });
+});
+
+// ══════════════════════════════════════════════════
+// THREE.JS — POINT CLOUD JELLYFISH
+// Breathe in place. Scroll drives position + glow.
+// ══════════════════════════════════════════════════
+(function initThree(){
+  const canvas=document.getElementById('canvas-bg');
+  const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(55,window.innerWidth/window.innerHeight,.1,1000);
+  camera.position.z=90;
+
+  function buildJelly(n, size, hue){
+    const pos=new Float32Array(n*3);
+    const col=new Float32Array(n*3);
+    let p=0;
+    // Bell — 58%
+    const bn=~~(n*.58);
+    for(let i=0;i<bn;i++){
+      const phi=Math.acos(Math.random());
+      const th=Math.random()*Math.PI*2;
+      const r=size*(0.85+Math.random()*.22);
+      pos[p*3]=r*Math.sin(phi)*Math.cos(th);
+      pos[p*3+1]=r*Math.cos(phi)*.50;
+      pos[p*3+2]=r*Math.sin(phi)*Math.sin(th);
+      const b=.32+Math.cos(phi)*.68;
+      const c=new THREE.Color().setHSL(hue,.82,.28+b*.48);
+      col[p*3]=c.r;col[p*3+1]=c.g;col[p*3+2]=c.b; p++;
+    }
+    // Bright rim
+    const rn=~~(n*.04);
+    for(let i=0;i<rn;i++){
+      const th=Math.random()*Math.PI*2;
+      const r=size*(0.95+Math.random()*.07);
+      pos[p*3]=r*Math.cos(th); pos[p*3+1]=(Math.random()-.5)*.04*size; pos[p*3+2]=r*Math.sin(th);
+      const c=new THREE.Color().setHSL(hue+.04,.92,.85);
+      col[p*3]=c.r;col[p*3+1]=c.g;col[p*3+2]=c.b; p++;
+    }
+    // Tentacles
+    const numT=9+~~(Math.random()*5);
+    const tLeft=n-p, ppt=~~(tLeft/numT);
+    for(let t=0;t<numT;t++){
+      const ang=(t/numT)*Math.PI*2;
+      const bR=size*(.70+Math.random()*.3);
+      const len=size*(2.6+Math.random()*5);
+      for(let k=0;k<ppt&&p<n;k++){
+        const frac=k/ppt;
+        const w1=Math.sin(frac*Math.PI*3.5+ang)*size*.32*frac;
+        const w2=Math.cos(frac*Math.PI*2.1+ang*1.3)*size*.14*(frac*.8);
+        pos[p*3]=Math.cos(ang)*bR*(1-frac*.38)+w1+(Math.random()-.5)*size*.07;
+        pos[p*3+1]=-frac*len+(Math.random()-.5)*.04*size;
+        pos[p*3+2]=Math.sin(ang)*bR*(1-frac*.38)+w2+(Math.random()-.5)*size*.07;
+        const b=Math.max(.08,.62-frac*.58);
+        const c=new THREE.Color().setHSL(hue+.04+Math.random()*.05,.78,b*.6);
+        col[p*3]=c.r;col[p*3+1]=c.g;col[p*3+2]=c.b; p++;
+      }
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+    return geo;
+  }
+
+  const creatures=[];
+  const COUNT=6, PTS=~~(10000/COUNT);
+
+  for(let i=0;i<COUNT;i++){
+    const hue=.48+Math.random()*.18;
+    const sz=1.0+Math.random()*1.5;
+    const geo=buildJelly(PTS,sz,hue);
+    const ptSz=.13+Math.random()*.22;
+    const mat=new THREE.PointsMaterial({size:ptSz,vertexColors:true,transparent:true,opacity:.45,sizeAttenuation:true});
+    const pts=new THREE.Points(geo,mat);
+    const sc=3+Math.random()*10;
+    pts.scale.setScalar(sc);
+    // Spread around the scene
+    pts.position.set((Math.random()-.5)*140,(Math.random()-.5)*110,(Math.random()-.5)*50);
+    pts.rotation.set(Math.random()*Math.PI*2,Math.random()*Math.PI*2,0);
+    scene.add(pts);
+
+    creatures.push({
+      pts, mat, sc,
+      // Home position — jellyfish stays near here
+      homeX: pts.position.x, homeY: pts.position.y, homeZ: pts.position.z,
+      // Breath (scale pulse) — very slow
+      breathSpd: .12+Math.random()*.18,
+      breathAmp: .028+Math.random()*.04,
+      // Gentle sway — no net drift, oscillates around home
+      swayX: (.008+Math.random()*.015)*(Math.random()>.5?1:-1),
+      swayY: .004+Math.random()*.008,
+      swayZ: (.003+Math.random()*.007)*(Math.random()>.5?1:-1),
+      // Slow idle rotation
+      rotY: (.0004+Math.random()*.0008)*(Math.random()>.5?1:-1),
+      rotX: (.0001+Math.random()*.0004)*(Math.random()>.5?1:-1),
+      // Opacity base
+      opBase: .35+Math.random()*.25,
+      opBreath: .06+Math.random()*.1,
+      // Phase offset
+      phase: Math.random()*Math.PI*2,
+      // Scroll lift: how much this creature rises on scroll
+      scrollLift: .04+Math.random()*.08,
+      scrollSway: (.02+Math.random()*.05)*(Math.random()>.5?1:-1),
+      // Current scroll momentum (local, lerped)
+      localScrollVel: 0,
+    });
+  }
+
+  // Background star haze
+  const hN=2500, hP=new Float32Array(hN*3), hC=new Float32Array(hN*3);
+  for(let i=0;i<hN;i++){
+    hP[i*3]=(Math.random()-.5)*320; hP[i*3+1]=(Math.random()-.5)*320; hP[i*3+2]=(Math.random()-.5)*140;
+    const b=.08+Math.random()*.4;
+    hC[i*3]=b*.05; hC[i*3+1]=b*.38; hC[i*3+2]=b;
+  }
+  const hGeo=new THREE.BufferGeometry();
+  hGeo.setAttribute('position',new THREE.BufferAttribute(hP,3));
+  hGeo.setAttribute('color',new THREE.BufferAttribute(hC,3));
+  scene.add(new THREE.Points(hGeo,new THREE.PointsMaterial({size:.12,vertexColors:true,transparent:true,opacity:.22,sizeAttenuation:true})));
+
+  let camY=0, camX=0, t=0;
+  // Camera also lazily follows scroll
+  window.addEventListener('scroll',()=>{ camY=-window.scrollY*.018; });
+  document.addEventListener('mousemove',e=>{ camX=(e.clientX/window.innerWidth-.5)*8; });
+
+  function animate(){
+    requestAnimationFrame(animate);
+    t+=.008;
+
+    camera.position.y+=(camY-camera.position.y)*.03;
+    camera.position.x+=(camX-camera.position.x)*.022;
+
+    // Decay global scroll glow
+    scrollGlow*=.93;
+
+    creatures.forEach(c=>{
+      // Local scroll velocity — lerped for smooth underwater inertia
+      c.localScrollVel+=(scrollVelocity - c.localScrollVel)*.08;
+
+      // POSITION — home + gentle oscillation + scroll offset
+      const scrollOffset = c.localScrollVel * c.scrollLift;
+      const swayOffset  = c.localScrollVel * c.scrollSway;
+
+      // Oscillate around home
+      const tx = c.homeX + Math.sin(t*c.swayX*60+c.phase)*3;
+      const ty = c.homeY + Math.sin(t*c.swayY*60+c.phase+1)*2 + scrollOffset * 8;
+      const tz = c.homeZ + Math.cos(t*c.swayZ*60+c.phase+2)*2;
+      const lx = c.homeX + Math.cos(t*c.swayX*45+c.phase+.5)*1.5 + swayOffset * 5;
+
+      // Smooth lerp toward target
+      c.pts.position.x+=(lx-c.pts.position.x)*.012;
+      c.pts.position.y+=(ty-c.pts.position.y)*.015;
+      c.pts.position.z+=(tz-c.pts.position.z)*.010;
+
+      // Idle rotation — very slow
+      c.pts.rotation.y+=c.rotY;
+      c.pts.rotation.x+=c.rotX*Math.sin(t*.1+c.phase);
+
+      // BREATH — scale pulse only
+      const breath=1+Math.sin(t*c.breathSpd+c.phase)*c.breathAmp;
+      c.pts.scale.setScalar(c.sc*breath);
+
+      // OPACITY — base idle + scroll glow boost
+      const glowBoost = scrollGlow * .55;
+      c.mat.opacity = c.opBase + Math.sin(t*c.breathSpd+c.phase)*c.opBreath + glowBoost;
+      c.mat.opacity = Math.min(1, c.mat.opacity);
+
+      // POINT SIZE — grows slightly with scroll glow
+      c.mat.size = (c.mat.size + ((.13 + scrollGlow*.18) - c.mat.size)*.1);
+    });
+
+    renderer.render(scene,camera);
+  }
+  animate();
+
+  window.addEventListener('resize',()=>{
+    camera.aspect=window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth,window.innerHeight);
+  });
+})();
+
+// ══════════════════════════════════════════════════
+// WATER DISTORTION + CAUSTICS + GLOW SCATTER (2D)
+// ══════════════════════════════════════════════════
+(function initWater(){
+  // ── Water canvas: caustic light patches + ripples
+  const wc=document.getElementById('water-canvas');
+  const wctx=wc.getContext('2d');
+  let W=wc.width=window.innerWidth, H=wc.height=window.innerHeight;
+
+  // ── Glow scatter canvas: radiates from where jellyfish would be
+  const gc=document.getElementById('glow-canvas');
+  const gctx=gc.getContext('2d');
+  gc.width=W; gc.height=H;
+
+  const ripples=[];
+  function addRipple(x,y,str=1){
+    for(let i=0;i<4;i++)
+      ripples.push({x,y,r:i*14,alpha:(.28-i*.055)*str,speed:1.0+str*.7+i*.2});
+  }
+  document.addEventListener('click',e=>addRipple(e.clientX,e.clientY,1.1));
+  document.addEventListener('touchstart',e=>{if(e.touches[0])addRipple(e.touches[0].clientX,e.touches[0].clientY,.9);},{passive:true});
+  let lastSc2=0;
+  window.addEventListener('scroll',()=>{
+    const d=Math.abs(window.scrollY-lastSc2); lastSc2=window.scrollY;
+    if(d>6){
+      // Multiple ripples across width when scrolling — underwater displacement feel
+      const nx=3;
+      for(let i=0;i<nx;i++){
+        addRipple(W*(i/(nx-1)*.8+.1)+Math.random()*80-40, H*.35+Math.random()*H*.5, Math.min(d/55,1.6));
+      }
+    }
+  });
+
+  // Caustic light patches — pools of scattered bioluminescence
+  const caustics=Array.from({length:22},()=>({
+    x: Math.random()*W, y: Math.random()*H,
+    rx: 60+Math.random()*140, ry: 30+Math.random()*80,
+    alpha: .018+Math.random()*.032,
+    speed: .04+Math.random()*.09,
+    phase: Math.random()*Math.PI*2,
+    rot: Math.random()*Math.PI,
+    rotSpd: (.001+Math.random()*.003)*(Math.random()>.5?1:-1),
+  }));
+
+  // Volumetric fog blobs
+  const fog=Array.from({length:50},()=>({
+    x:Math.random()*W, y:Math.random()*H,
+    r:55+Math.random()*120,
+    alpha:.009+Math.random()*.016,
+    speed:.05+Math.random()*.13,
+    phase:Math.random()*Math.PI*2,
+  }));
+
+  // Glow blobs — represent scattered jellyfish light in water column
+  const glowBlobs=Array.from({length:12},()=>({
+    x: Math.random()*W, y: Math.random()*H,
+    r: 80+Math.random()*200,
+    alpha: .015+Math.random()*.025,
+    phase: Math.random()*Math.PI*2,
+    speed: .03+Math.random()*.07,
+    hue: 195+Math.random()*30, // blue-cyan
+  }));
+
+  let t=0;
+  function drawWater(){
+    requestAnimationFrame(drawWater);
+    t+=.007;
+
+    // ── WATER CANVAS ──
+    wctx.clearRect(0,0,W,H);
+
+    // Caustic ellipses — shimmer like light through water
+    caustics.forEach(ca=>{
+      ca.rot+=ca.rotSpd;
+      ca.x+=Math.sin(t*ca.speed+ca.phase)*.4;
+      ca.y+=Math.cos(t*ca.speed*.7+ca.phase)*.2;
+      if(ca.x<-200) ca.x=W+100; if(ca.x>W+200) ca.x=-100;
+      if(ca.y<-200) ca.y=H+100; if(ca.y>H+200) ca.y=-100;
+      const pulse=1+Math.sin(t*ca.speed*3+ca.phase)*.35;
+      const al=(ca.alpha+scrollGlow*.04)*pulse;
+      wctx.save();
+      wctx.translate(ca.x,ca.y);
+      wctx.rotate(ca.rot);
+      const grd=wctx.createRadialGradient(0,0,0,0,0,ca.rx);
+      grd.addColorStop(0,`rgba(125,212,248,${(al*1.8).toFixed(3)})`);
+      grd.addColorStop(.4,`rgba(80,180,220,${(al*.7).toFixed(3)})`);
+      grd.addColorStop(1,'rgba(0,0,0,0)');
+      wctx.scale(1,ca.ry/ca.rx);
+      wctx.beginPath(); wctx.arc(0,0,ca.rx,0,Math.PI*2);
+      wctx.fillStyle=grd; wctx.fill();
+      wctx.restore();
+    });
+
+    // Fog
+    fog.forEach(fp=>{
+      fp.x+=Math.sin(t*fp.speed+fp.phase)*.3;
+      fp.y-=fp.speed*.06;
+      if(fp.y+fp.r<0){fp.y=H+fp.r; fp.x=Math.random()*W;}
+      const g=wctx.createRadialGradient(fp.x,fp.y,0,fp.x,fp.y,fp.r);
+      g.addColorStop(0,`rgba(100,200,248,${fp.alpha})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      wctx.beginPath(); wctx.arc(fp.x,fp.y,fp.r,0,Math.PI*2);
+      wctx.fillStyle=g; wctx.fill();
+    });
+
+    // Ripples
+    for(let i=ripples.length-1;i>=0;i--){
+      const rp=ripples[i];
+      rp.r+=rp.speed; rp.alpha*=.955;
+      wctx.beginPath(); wctx.arc(rp.x,rp.y,rp.r,0,Math.PI*2);
+      wctx.strokeStyle=`rgba(125,212,248,${rp.alpha.toFixed(3)})`; wctx.lineWidth=.9; wctx.stroke();
+      if(rp.r>40){
+        wctx.beginPath(); wctx.arc(rp.x,rp.y,rp.r*.55,0,Math.PI*2);
+        wctx.strokeStyle=`rgba(125,212,248,${(rp.alpha*.25).toFixed(3)})`; wctx.lineWidth=.4; wctx.stroke();
+      }
+      if(rp.alpha<.003) ripples.splice(i,1);
+    }
+
+    // Horizontal water surface shimmer lines — very faint
+    for(let row=0;row<6;row++){
+      const y=H*.05+row*(H*.18)+Math.sin(t*.6+row*1.4)*8;
+      const al=.012+Math.sin(t*.8+row)*0.008+scrollGlow*.015;
+      const grad=wctx.createLinearGradient(0,y,W,y);
+      grad.addColorStop(0,'rgba(0,0,0,0)');
+      grad.addColorStop(.3,`rgba(125,212,248,${al.toFixed(3)})`);
+      grad.addColorStop(.7,`rgba(125,212,248,${al.toFixed(3)})`);
+      grad.addColorStop(1,'rgba(0,0,0,0)');
+      wctx.beginPath(); wctx.moveTo(0,y); wctx.lineTo(W,y);
+      wctx.strokeStyle=grad; wctx.lineWidth=1; wctx.stroke();
+    }
+
+    // ── GLOW SCATTER CANVAS ──
+    gctx.clearRect(0,0,W,H);
+
+    glowBlobs.forEach(gb=>{
+      gb.y-=gb.speed*.08;
+      gb.x+=Math.sin(t*gb.speed*.8+gb.phase)*.5;
+      if(gb.y+gb.r<-100){gb.y=H+gb.r; gb.x=Math.random()*W;}
+      const glowMult=1+scrollGlow*2.5; // scroll makes glow flare
+      const al=(gb.alpha+Math.sin(t*gb.speed+gb.phase)*gb.alpha*.6)*glowMult;
+      const g=gctx.createRadialGradient(gb.x,gb.y,0,gb.x,gb.y,gb.r*glowMult);
+      g.addColorStop(0,`hsla(${gb.hue},85%,75%,${Math.min(.9,al*2).toFixed(3)})`);
+      g.addColorStop(.3,`hsla(${gb.hue},80%,60%,${(al*.6).toFixed(3)})`);
+      g.addColorStop(.7,`hsla(${gb.hue},75%,50%,${(al*.2).toFixed(3)})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      gctx.beginPath(); gctx.arc(gb.x,gb.y,gb.r*glowMult,0,Math.PI*2);
+      gctx.fillStyle=g; gctx.fill();
+    });
+  }
+  drawWater();
+
+  window.addEventListener('resize',()=>{
+    W=wc.width=gc.width=window.innerWidth;
+    H=wc.height=gc.height=window.innerHeight;
+    fog.forEach(p=>{p.x=Math.random()*W;p.y=Math.random()*H;});
+    caustics.forEach(c=>{c.x=Math.random()*W;c.y=Math.random()*H;});
+    glowBlobs.forEach(g=>{g.x=Math.random()*W;g.y=Math.random()*H;});
+  });
+})();
+
+// ══════════════════════════════════════════════════
+// PORTAL CANVAS
+// ══════════════════════════════════════════════════
+(function initPortal(){
+  const wrap=document.getElementById('portal-wrap');
+  const c=document.getElementById('portal-canvas');
+  const resize=()=>{c.width=wrap.offsetWidth;c.height=wrap.offsetHeight;};
+  resize();
+  const ctx=c.getContext('2d');
+  let hovered=false, burst=0, t=0;
+
+  wrap.addEventListener('mouseenter',()=>hovered=true);
+  wrap.addEventListener('mouseleave',()=>hovered=false);
+  wrap.addEventListener('touchstart',()=>{hovered=true;},{passive:true});
+  wrap.addEventListener('touchend',()=>{setTimeout(()=>hovered=false,700);},{passive:true});
+
+  function draw(){
+    requestAnimationFrame(draw);
+    t+=.016;
+    const W=c.width, H=c.height, cx=W/2, cy=H/2, R=W*.435;
+    ctx.clearRect(0,0,W,H);
+    const sp=hovered?2.1:1.0, ba=hovered?.65:.28;
+
+    const aura=ctx.createRadialGradient(cx,cy,R*.6,cx,cy,R*1.28);
+    aura.addColorStop(0,'rgba(125,212,248,0)');
+    aura.addColorStop(.45,`rgba(125,212,248,${(.06+Math.sin(t*sp)*.03).toFixed(3)})`);
+    aura.addColorStop(1,'rgba(125,212,248,0)');
+    ctx.beginPath();ctx.arc(cx,cy,R*1.28,0,Math.PI*2);ctx.fillStyle=aura;ctx.fill();
+
+    const interior=ctx.createRadialGradient(cx,cy,0,cx,cy,R*.97);
+    interior.addColorStop(0,'rgba(0,3,8,.96)');
+    interior.addColorStop(.5,'rgba(1,5,15,.89)');
+    interior.addColorStop(1,'rgba(6,20,40,.58)');
+    ctx.beginPath();ctx.arc(cx,cy,R*.97,0,Math.PI*2);ctx.fillStyle=interior;ctx.fill();
+
+    for(let i=0;i<8;i++){
+      const phase=t*sp*(.4+i*.2)+i*1.1;
+      const rr=R*(.14+i*.12+Math.sin(phase)*.024);
+      const al=ba*(.88-i*.09)*Math.abs(Math.sin(phase*.6+i*.48));
+      ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(125,212,248,${al.toFixed(3)})`;
+      ctx.lineWidth=hovered?1.2:.7; ctx.stroke();
+    }
+
+    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(125,212,248,${(ba*.9).toFixed(3)})`;ctx.lineWidth=1.1;ctx.stroke();
+
+    if(burst>0){
+      ctx.beginPath();ctx.arc(cx,cy,R*(1.02-burst*.48),0,Math.PI*2);
+      ctx.strokeStyle=`rgba(185,240,255,${(burst*.85).toFixed(3)})`;ctx.lineWidth=2.8;ctx.stroke();
+      ctx.beginPath();ctx.arc(cx,cy,R*(1.02-burst*.28),0,Math.PI*2);
+      ctx.strokeStyle=`rgba(125,212,248,${(burst*.35).toFixed(3)})`;ctx.lineWidth=1;ctx.stroke();
+      burst-=.028;
+    }
+  }
+  draw();
+  wrap.addEventListener('click',()=>{burst=1;drawCard();});
+  window.addEventListener('resize',resize);
+})();
+
+// ══════════════════════════════════════════════════
+// SOUND
+// ══════════════════════════════════════════════════
+let audioCtx=null;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+function playReveal(){
+  if(!audioCtx)return;const now=audioCtx.currentTime;
+  [196,261,329,392].forEach((f,i)=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='sine';o.frequency.setValueAtTime(f,now);o.frequency.exponentialRampToValueAtTime(f*1.003,now+2);
+    g.gain.setValueAtTime(0,now+i*.1);g.gain.linearRampToValueAtTime(.036-i*.006,now+i*.1+.18);g.gain.exponentialRampToValueAtTime(.001,now+2.8);
+    o.start(now+i*.1);o.stop(now+3);
+  });
+}
+function playClose(){
+  if(!audioCtx)return;const now=audioCtx.currentTime;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sine';o.frequency.setValueAtTime(392,now);o.frequency.exponentialRampToValueAtTime(220,now+.8);
+  g.gain.setValueAtTime(.046,now);g.gain.exponentialRampToValueAtTime(.001,now+.9);
+  o.start(now);o.stop(now+1);
+}
+
+// ══════════════════════════════════════════════════
+// RUNES
+// ══════════════════════════════════════════════════
+const RUNES=['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᚹ','ᚺ','ᚾ','ᛁ','ᛃ','ᛇ','ᛈ','ᛉ','ᛊ','ᛏ','ᛒ','ᛖ','ᛗ'];
+function updateRunes(){
+  const track=document.getElementById('rune-track');
+  track.innerHTML='';
+  const pips=Math.min(pool.length,20), done=Math.min(drawn.length,pips);
+  for(let i=0;i<pips;i++){
+    const d=document.createElement('div');
+    d.className='rune-pip'+(i<done?' drawn':'');
+    track.appendChild(d);
+  }
+  document.getElementById('rune-text').textContent=`${RUNES[totalDrawn%RUNES.length]} ${totalDrawn} drawn`;
+  document.getElementById('portal-glyph').textContent=RUNES[(totalDrawn+6)%RUNES.length];
+}
+
+// ══════════════════════════════════════════════════
+// CONSTELLATION — meditative artwork
+// ══════════════════════════════════════════════════
+(function initConstellation(){
+  const wrap   = document.getElementById('constellation-wrap');
+  const canvas = document.getElementById('constellation-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  // Star positions as [rx, ry] fractions of canvas W×H
+  // Organic, asymmetric — not a circle
+  const LAYOUT = [
+    [0.50, 0.09],  // 0  Personal Interests
+    [0.74, 0.17],  // 1  Aspirations
+    [0.88, 0.40],  // 2  Self-Reflection
+    [0.78, 0.65],  // 3  Memory
+    [0.58, 0.83],  // 4  Values
+    [0.36, 0.90],  // 5  Vulnerability
+    [0.16, 0.74],  // 6  Big Questions
+    [0.09, 0.46],  // 7  Gratitude
+    [0.19, 0.21],  // 8  Habits & Quirks
+    [0.40, 0.08],  // 9  Connection
+    [0.63, 0.46],  // 10 Time & Legacy
+    [0.34, 0.50],  // 11 The Dark
+  ];
+
+  // Where to place the label relative to the star
+  // [anchorX (-1=left, 0=center, 1=right), offsetX px, offsetY px]
+  const LABEL_ANCHOR = [
+    [ 0,   0, -22],  // 0  above
+    [ 1,  16, -10],  // 1  right
+    [ 1,  16,   4],  // 2  right
+    [ 1,  14,   4],  // 3  right
+    [ 0,   0,  20],  // 4  below
+    [ 0,   0,  22],  // 5  below
+    [-1, -14,   4],  // 6  left
+    [-1, -16,   4],  // 7  left
+    [-1, -14,  -8],  // 8  left
+    [ 0,   0, -22],  // 9  above
+    [ 1,  14,   4],  // 10 right
+    [-1, -14,   4],  // 11 left
+  ];
+
+  const EDGES = [
+    [0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,0],
+    [0,10],[1,10],[2,10],[3,10],
+    [9,11],[8,11],[7,11],[6,11],
+    [10,11],[5,11],[4,10],
+  ];
+
+  let W, H, DPR, stars=[], hoveredIdx=-1, t=0;
+  // Fonts loaded flag — wait for Google Fonts
+  let fontsReady = false;
+  document.fonts.ready.then(()=>{ fontsReady=true; });
+
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio, 2);
+    const rect = wrap.getBoundingClientRect();
+    W = rect.width;
+    H = Math.max(500, W * 0.78);
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.width  = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildStars();
+  }
+
+  function buildStars(){
+    stars = TOPICS.map((topic, i) => ({
+      topic, i,
+      bx: LAYOUT[i][0] * W,
+      by: LAYOUT[i][1] * H,
+      x:  LAYOUT[i][0] * W,
+      y:  LAYOUT[i][1] * H,
+      r:  4 + Math.random() * 2.5,          // base star radius
+      twPhase: Math.random() * Math.PI * 2,
+      twSpd:   0.35 + Math.random() * 0.7,
+      drAmp:   1.5 + Math.random() * 2,
+      drPhase: Math.random() * Math.PI * 2,
+      drSpd:   0.06 + Math.random() * 0.1,
+      active:  false,
+    }));
+  }
+
+  function hitStar(px, py){
+    // generous hit area — 28px radius minimum
+    for(let i=stars.length-1;i>=0;i--){
+      const s=stars[i];
+      const d=28;
+      if((px-s.x)**2+(py-s.y)**2 < d*d) return i;
+    }
+    return -1;
+  }
+
+  function drawStar(s, i){
+    const isH = i===hoveredIdx, isA = s.active;
+    const tw  = 0.75 + Math.sin(t*s.twSpd+s.twPhase)*0.25;
+    const r   = s.r * (isA?2.4:isH?1.8:1.0) * tw;
+
+    // ── Outer atmospheric halo
+    const hR = r * (isA?9:isH?6.5:4);
+    const hA = isA?0.22:isH?0.14:0.06;
+    const halo = ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,hR);
+    halo.addColorStop(0,`rgba(125,212,248,${hA})`);
+    halo.addColorStop(0.5,`rgba(80,160,210,${hA*0.4})`);
+    halo.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(s.x,s.y,hR,0,Math.PI*2);
+    ctx.fillStyle=halo; ctx.fill();
+
+    // ── Mid glow bloom
+    if(isA||isH){
+      const bR=r*4.5;
+      const bloom=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,bR);
+      bloom.addColorStop(0,`rgba(180,238,255,${isA?0.55:0.32})`);
+      bloom.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.beginPath(); ctx.arc(s.x,s.y,bR,0,Math.PI*2);
+      ctx.fillStyle=bloom; ctx.fill();
+    }
+
+    // ── Star core — bright white center fading to cyan
+    const core=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,r*1.2);
+    core.addColorStop(0,'rgba(240,252,255,1)');
+    core.addColorStop(0.3,`rgba(125,212,248,${isA?1:0.9})`);
+    core.addColorStop(1,'rgba(30,100,160,0)');
+    ctx.beginPath(); ctx.arc(s.x,s.y,r*1.2,0,Math.PI*2);
+    ctx.fillStyle=core; ctx.fill();
+
+    // ── 4-point diffraction spike (always, scales with state)
+    const spikeLen = r * (isA?7:isH?5:3);
+    const spikeA   = isA?0.55:isH?0.35:0.18;
+    [[1,0],[0,1],[-1,0],[0,-1]].forEach(([dx,dy],si)=>{
+      const len = si%2===0 ? spikeLen : spikeLen*0.62; // H spikes longer
+      const g=ctx.createLinearGradient(s.x,s.y,s.x+dx*len,s.y+dy*len);
+      g.addColorStop(0,`rgba(210,242,255,${spikeA})`);
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.beginPath();
+      ctx.moveTo(s.x,s.y);
+      ctx.lineTo(s.x+dx*len,s.y+dy*len);
+      ctx.strokeStyle=g; ctx.lineWidth=isA?1.2:0.7;
+      ctx.setLineDash([]); ctx.stroke();
+      // Mirror
+      const g2=ctx.createLinearGradient(s.x,s.y,s.x-dx*len,s.y-dy*len);
+      g2.addColorStop(0,`rgba(210,242,255,${spikeA})`);
+      g2.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.beginPath();
+      ctx.moveTo(s.x,s.y);
+      ctx.lineTo(s.x-dx*len,s.y-dy*len);
+      ctx.strokeStyle=g2; ctx.lineWidth=isA?1.2:0.7; ctx.stroke();
+    });
+
+    // ── LABEL — always visible
+    if(!fontsReady) return;
+    const [ax, ox, oy] = LABEL_ANCHOR[i];
+    const lx = s.x + ox;
+    const ly = s.y + oy;
+    const nameA  = isA?1.0 : isH?0.85 : 0.45;
+    const countA = isA?0.7 : isH?0.55 : 0.25;
+    const nameSize  = isA?11:isH?10.5:10;  // px — reliable in canvas
+    const countSize = 9;
+
+    ctx.save();
+    ctx.textAlign = ax<0?'right':ax>0?'left':'center';
+    ctx.textBaseline = 'middle';
+
+    // Name — Cinzel uppercase
+    ctx.font = `${isA?600:400} ${nameSize}px "Cinzel", serif`;
+    ctx.letterSpacing = '1.8px';
+    ctx.fillStyle = `rgba(200,232,245,${nameA})`;
+    // Subtle text glow for active
+    if(isA){
+      ctx.shadowColor='rgba(125,212,248,0.7)';
+      ctx.shadowBlur=8;
+    }
+    ctx.fillText(s.topic.name.toUpperCase(), lx, ly);
+    ctx.shadowBlur=0;
+
+    // Count — italic Cormorant, below name
+    const countOffset = ax===0 ? (oy>0?14:-14) : (oy>0?13:13);
+    const countY = oy>0 ? ly+countOffset : ly-countOffset;
+    ctx.font = `300 italic ${countSize}px "Cormorant Garamond", serif`;
+    ctx.letterSpacing = '0.5px';
+    ctx.fillStyle = `rgba(74,122,150,${countA})`;
+    ctx.fillText(`${s.topic.questions.length} questions`, lx, countY);
+    ctx.restore();
+  }
+
+  function draw(){
+    requestAnimationFrame(draw);
+    t+=0.01;
+    ctx.clearRect(0,0,W,H);
+
+    // Drift stars around home
+    stars.forEach(s=>{
+      s.x = s.bx + Math.sin(t*s.drSpd+s.drPhase)*s.drAmp;
+      s.y = s.by + Math.cos(t*s.drSpd*0.7+s.drPhase+1)*s.drAmp*0.55;
+    });
+
+    // ── EDGES
+    EDGES.forEach(([a,b])=>{
+      const sa=stars[a], sb=stars[b];
+      const eitherA = sa.active||sb.active;
+      const eitherH = a===hoveredIdx||b===hoveredIdx;
+      const al = eitherA?0.5:eitherH?0.25:0.08;
+      const lw = eitherA?1.0:0.55;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(sa.x,sa.y); ctx.lineTo(sb.x,sb.y);
+
+      if(eitherA){
+        const g=ctx.createLinearGradient(sa.x,sa.y,sb.x,sb.y);
+        g.addColorStop(0,`rgba(125,212,248,${(al*0.5).toFixed(2)})`);
+        g.addColorStop(0.5,`rgba(125,212,248,${al.toFixed(2)})`);
+        g.addColorStop(1,`rgba(125,212,248,${(al*0.5).toFixed(2)})`);
+        ctx.strokeStyle=g;
+        ctx.setLineDash([]);
+      } else {
+        ctx.strokeStyle=`rgba(125,212,248,${al.toFixed(2)})`;
+        ctx.setLineDash([2,8]);
+        ctx.lineDashOffset = -t*6;
+      }
+      ctx.lineWidth=lw; ctx.stroke();
+      ctx.restore();
+    });
+
+    // ── STARS + LABELS (drawn last, on top)
+    stars.forEach((s,i)=>drawStar(s,i));
+  }
+
+  function getPos(e){
+    const rect=canvas.getBoundingClientRect();
+    const src=e.touches?e.touches[0]:e;
+    return [src.clientX-rect.left, src.clientY-rect.top];
+  }
+
+  canvas.addEventListener('mousemove',e=>{
+    const [px,py]=getPos(e);
+    hoveredIdx=hitStar(px,py);
+    canvas.style.cursor=hoveredIdx>=0?'pointer':'crosshair';
+  });
+  canvas.addEventListener('mouseleave',()=>{ hoveredIdx=-1; });
+
+  function handleClick(px,py){
+    const idx=hitStar(px,py);
+    if(idx<0) return;
+    initAudio();
+    if(selTopic===idx){ selectAllWaters(); return; }
+    stars.forEach(s=>s.active=false);
+    stars[idx].active=true;
+    allWatersBtn.classList.remove('active');
+    selTopic=idx;
+    pool=TOPICS[idx].questions.map(q=>({q,topic:TOPICS[idx].name}));
+    drawn=[];
+    portalLabel.textContent=`${TOPICS[idx].name} · ${TOPICS[idx].questions.length} questions`;
+    updateRunes();
+    setTimeout(()=>drawSection.scrollIntoView({behavior:'smooth',block:'center'}),80);
+  }
+
+  canvas.addEventListener('click',e=>{ const [px,py]=getPos(e); handleClick(px,py); });
+  canvas.addEventListener('touchend',e=>{
+    e.preventDefault();
+    const t2=e.changedTouches[0];
+    if(t2){ const [px,py]=getPos(t2); handleClick(px,py); }
+  },{passive:false});
+
+  resize();
+  window.addEventListener('resize',resize);
+  draw();
+  window._resetConstellation=()=>stars.forEach(s=>s.active=false);
+})();
+
+// ══════════════════════════════════════════════════
+// ALL WATERS BUTTON + DRAW SECTION REFS
+// ══════════════════════════════════════════════════
+const portalLabel  = document.getElementById('portal-label');
+const drawSection  = document.getElementById('draw-section');
+const allWatersBtn = document.getElementById('all-waters-btn');
+
+function selectAllWaters(){
+  selTopic = null; pool = ALL_Q; drawn = [];
+  portalLabel.textContent = `All waters · ${ALL_Q.length} questions`;
+  allWatersBtn.classList.add('active');
+  if(window._resetConstellation) window._resetConstellation();
+  updateRunes();
+  setTimeout(()=>drawSection.scrollIntoView({behavior:'smooth',block:'center'}),80);
+}
+
+allWatersBtn.addEventListener('click', ()=>{ initAudio(); selectAllWaters(); });
+
+// ══════════════════════════════════════════════════
+// CARD DRAW
+// ══════════════════════════════════════════════════
+const overlay=document.getElementById('card-overlay');
+const bloomEl=document.getElementById('bloom');
+const closeBtn=document.getElementById('close-btn');
+const nextBtn=document.getElementById('next-btn');
+const cardBackdrop=document.getElementById('card-backdrop');
+
+function drawCard(){
+  initAudio();
+  if(drawn.length>=pool.length) drawn=[];
+  let idx,att=0;
+  do{idx=~~(Math.random()*pool.length);att++;}
+  while(drawn.includes(idx)&&drawn.length<pool.length&&att<400);
+  drawn.push(idx); totalDrawn++;
+  const item=pool[idx];
+  document.getElementById('card-q').textContent=item.q;
+  document.getElementById('card-cat').textContent=item.topic.toUpperCase();
+  document.getElementById('card-num').textContent=`${totalDrawn} · ${RUNES[totalDrawn%RUNES.length]}`;
+  overlay.classList.add('visible');
+  document.body.style.overflow='hidden';
+  bloomEl.classList.add('on');
+  setTimeout(()=>bloomEl.classList.remove('on'),320);
+  playReveal(); updateRunes();
+}
+function closeCard(){
+  initAudio();playClose();
+  overlay.classList.remove('visible');
+  document.body.style.overflow='';
+}
+nextBtn.addEventListener('click',drawCard);
+closeBtn.addEventListener('click',closeCard);
+cardBackdrop.addEventListener('click',closeCard);
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeCard();
+  if((e.key===' '||e.key==='Enter')&&overlay.classList.contains('visible'))drawCard();
+});
+
+updateRunes();
+</script>
+</body>
+</html>
